@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TOTVS Fluig Simulator - ERP Integrado (CRUD + Fluxo End-to-End)</title>
+  <style>
+    :root{
+      --primary:#0066CC; --secondary:#00B4D8; --success:#00C896; --danger:#FF6B6B;
+      --warning:#FFA500; --dark:#1A1A2E; --light:#F5F7FA; --border:#E2E8F0;
+    }
+    *{box-sizing:border-box} body{margin:0;font:14px/1.45 system-ui,Segoe UI,Roboto,Arial,sans-serif;background:var(--light)}
+    .header{display:flex;justify-content:space-between;align-items:center;background:#fff;padding:14px 24px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+    .brand{display:flex;gap:12px;align-items:center}
+    .brand h1{color:var(--primary);font-size:20px;margin:0}
+    .user{display:flex;gap:8px;align-items:center;background:var(--light);padding:6px 12px;border-radius:20px}
+    .avatar{width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
+    .layout{display:flex;height:calc(100vh - 56px)}
+    .sidebar{width:260px;background:var(--dark);color:#B8BEC9;overflow:auto}
+    .sec{padding:16px 0}
+    .sec h6{color:#8B92A9;font-size:11px;text-transform:uppercase;letter-spacing:1px;padding:0 16px;margin:0 0 8px}
+    .item{display:block;padding:12px 16px;color:#B8BEC9;text-decoration:none;cursor:pointer}
+    .item:hover{background:rgba(255,255,255,.06);color:#fff}
+    .item.active{background:var(--primary);color:#fff;position:relative}
+    .item.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--secondary)}
+    .content{flex:1;overflow:auto;padding:22px}
+    .page h2{margin:0 0 8px;font-size:24px;color:#192132}
+    .card{background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.05);padding:16px}
+    .grid{width:100%;border-collapse:collapse}
+    .grid th{background:var(--light);text-align:left;font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:#666;padding:10px}
+    .grid td{padding:10px;border-top:1px solid var(--border)}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+    button{border:1px solid var(--border);background:#fff;padding:8px 12px;border-radius:8px;cursor:pointer}
+    .p{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin-bottom:14px}
+    .stat .k{color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+    .stat .v{font-weight:800;font-size:22px;margin-top:6px}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px}
+    .b-aberto{background:rgba(255,165,0,.12);color:#c07a00}
+    .b-liq{background:rgba(0,200,150,.12);color:#007a5e}
+    .b-aprov{background:rgba(0,180,216,.12);color:#006d88}
+    .danger{background:#ffecec;border-color:#f5c2c7}
+    .ok{color:#007a5e} .warn{color:#c07a00}
+    .login{max-width:420px;margin:12vh auto;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.08);padding:20px}
+    .hidden{display:none}
+    .form{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+    .field{display:flex;flex-direction:column;gap:4px}
+    .field input,.field select{padding:10px;border:1px solid var(--border);border-radius:8px}
+    .items{margin-top:8px}
+    .items table{width:100%;border-collapse:collapse}
+    .items th,.items td{padding:8px;border-top:1px solid var(--border);text-align:left}
+    .right{display:flex;justify-content:flex-end;gap:8px}
+    .muted{color:#666}
+  </style>
+</head>
+<body>
+  <div id="login" class="login">
+    <h2 style="color:var(--primary);margin:0 0 8px">TOTVS Fluig Simulator</h2>
+    <p style="margin:0 0 16px;color:#666">ERP Integrado — Ambiente Local (dados em memória)</p>
+    <label>Usuário</label>
+    <select id="u" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin:6px 0 12px">
+      <option value="admin">admin (ADMIN)</option>
+      <option value="vendas">vendas (VENDAS)</option>
+      <option value="compras">compras (COMPRAS)</option>
+      <option value="financeiro">financeiro (FINANCEIRO)</option>
+      <option value="estoque">estoque (ESTOQUE)</option>
+    </select>
+    <label>Senha</label>
+    <input id="p" type="password" value="123456" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin:6px 0 16px"/>
+    <button onclick="login()" style="width:100%;background:var(--primary);color:#fff;border-color:#0052A3">Entrar</button>
+  </div>
+
+  <div id="app" class="hidden">
+    <div class="header">
+      <div class="brand"><h1>TOTVS Fluig</h1><span style="color:#666">ERP Integrado</span></div>
+      <div class="user"><div class="avatar" id="av">A</div><div><div id="un" style="font-weight:700">Admin</div><div id="ur" style="font-size:12px;color:#666">ADMIN</div></div><button onclick="sair()" class="danger" style="margin-left:8px">Sair</button></div>
+    </div>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="sec"><h6>Principal</h6>
+          <a class="item active" onclick="nav('dash',event)">Dashboard</a>
+        </div>
+        <div class="sec"><h6>Cadastros</h6>
+          <a class="item" onclick="nav('clientes',event)">Clientes</a>
+          <a class="item" onclick="nav('fornecedores',event)">Fornecedores</a>
+          <a class="item" onclick="nav('produtos',event)">Produtos</a>
+          <a class="item" onclick="nav('usuarios',event)">Usuários</a>
+        </div>
+        <div class="sec"><h6>Vendas</h6>
+          <a class="item" onclick="nav('pv',event)">Pedidos de Venda</a>
+        </div>
+        <div class="sec"><h6>Compras</h6>
+          <a class="item" onclick="nav('pc',event)">Pedidos de Compra</a>
+        </div>
+        <div class="sec"><h6>Financeiro</h6>
+          <a class="item" onclick="nav('fin',event)">CR / CP</a>
+        </div>
+        <div class="sec"><h6>Auditoria</h6>
+          <a class="item" onclick="nav('audit',event)">Eventos</a>
+        </div>
+      </aside>
+      <main class="content" id="main"></main>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      user:null, role:null, seqPV:1003, seqPC:5001,
+      roles:{admin:'ADMIN', vendas:'VENDAS', compras:'COMPRAS', financeiro:'FINANCEIRO', estoque:'ESTOQUE'},
+      usuarios:[
+        {id:1,login:'admin',senha:'123456',nome:'Administrador',perfil:'ADMIN'},
+        {id:2,login:'vendas',senha:'123456',nome:'João Silva',perfil:'VENDAS'},
+        {id:3,login:'compras',senha:'123456',nome:'Maria Santos',perfil:'COMPRAS'},
+        {id:4,login:'financeiro',senha:'123456',nome:'Pedro Costa',perfil:'FINANCEIRO'},
+        {id:5,login:'estoque',senha:'123456',nome:'Ana Paula',perfil:'ESTOQUE'}
+      ],
+      clientes:[
+        {id:1,codigo:'CLI001',razao:'Tech Solutions Ltda',doc:'12.345.678/0001-90',uf:'SP',cidade:'São Paulo',ativo:true},
+        {id:2,codigo:'CLI002',razao:'Comercial ABC S/A',doc:'98.765.432/0001-10',uf:'RJ',cidade:'Rio de Janeiro',ativo:true}
+      ],
+      fornecedores:[{id:1,codigo:'FOR001',razao:'Fornecedor Global Ltda',doc:'11.111.111/0001-11',uf:'SP',cidade:'Campinas',ativo:true}],
+      produtos:[
+        {id:1,codigo:'PRD001',descricao:'Notebook Inspiron 15',preco:3500,estoqueMin:5},
+        {id:2,codigo:'PRD002',descricao:'Mouse MX Master 3',preco:550,estoqueMin:10},
+        {id:3,codigo:'PRD003',descricao:'Teclado Mecânico',preco:420,estoqueMin:4}
+      ],
+      estoque:[{prodId:1,q:3},{prodId:2,q:55},{prodId:3,q:2}],
+      pv:[
+        {id:1001,numero:'PV2025001',clienteId:1,itens:[{prodId:1,q:2},{prodId:2,q:5}],imposto:0.18,status:'FATURADO'},
+        {id:1002,numero:'PV2025002',clienteId:2,itens:[{prodId:3,q:1}],imposto:0.18,status:'EM_APROVACAO'},
+        {id:1003,numero:'PV2025003',clienteId:1,itens:[{prodId:2,q:3}],imposto:0.18,status:'APROVADO'}
+      ],
+      pc:[{id:5001,numero:'PC2025001',fornId:1,itens:[{prodId:3,q:20}],imposto:0.12,status:'EM_APROVACAO'}],
+      cr:[], cp:[], audit:[]
+    };
+    const main = document.getElementById('main');
+    const BRL = n => n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    const byId = (arr,id) => arr.find(x=>x.id===id);
+    const estoque = pid => state.estoque.find(e=>e.prodId===pid)?.q||0;
+    const tot = itens => itens.reduce((s,it)=>s + (byId(state.produtos,it.prodId)?.preco||0)*it.q,0);
+    const log = (ev,ref,det) => state.audit.unshift({ts:new Date().toISOString(),ev,ref,det});
+    const allow = a => ({
+      aprovarPV:['ADMIN','VENDAS','FINANCEIRO'].includes(state.role),
+      faturarPV:['ADMIN','VENDAS','FINANCEIRO','ESTOQUE'].includes(state.role),
+      receberPC:['ADMIN','COMPRAS','ESTOQUE'].includes(state.role),
+      liquidar:['ADMIN','FINANCEIRO'].includes(state.role),
+      cad:['ADMIN'].includes(state.role)
+    })[a];
+
+    function login(){
+      const u=document.getElementById('u').value;
+      const p=document.getElementById('p').value;
+      const user=state.usuarios.find(x=>x.login===u && x.senha===p);
+      if(!user){ alert('Usuário/senha inválidos'); return; }
+      state.user=user.login; state.role=user.perfil;
+      document.getElementById('login').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('av').textContent=user.nome[0].toUpperCase();
+      document.getElementById('un').textContent=user.nome;
+      document.getElementById('ur').textContent=user.perfil;
+      log('LOGIN',user.login,'Acesso ao sistema');
+      nav('dash');
+    }
+    function sair(){ if(confirm('Sair?')) location.reload(); }
+
+    function nav(page,ev){
+      document.querySelectorAll('.item').forEach(i=>i.classList.remove('active'));
+      if(ev && ev.currentTarget) ev.currentTarget.classList.add('active');
+      else{
+        const item = Array.from(document.querySelectorAll('.item')).find(i => (i.getAttribute('onclick')||'').includes(page));
+        if(item) item.classList.add('active');
+      }
+      if(page==='dash') renderDash();
+      if(page==='clientes') renderClientes();
+      if(page==='fornecedores') renderFornecedores();
+      if(page==='produtos') renderProdutos();
+      if(page==='usuarios') renderUsuarios();
+      if(page==='pv') renderPV();
+      if(page==='pc') renderPC();
+      if(page==='fin') renderFin();
+      if(page==='audit') renderAudit();
+    }
+
+    function renderDash(){
+      const vendasFaturadas = state.pv.filter(p=>p.status==='FATURADO').reduce((s,p)=>s+tot(p.itens)*(1+p.imposto),0);
+      const pendPV = state.pv.filter(p=>p.status!=='FATURADO').length;
+      const estBaixo = state.produtos.filter(p=>estoque(p.id)<=p.estoqueMin).length;
+      main.innerHTML = `
+      <div class="page">
+        <h2>Dashboard</h2>
+        <div class="p">
+          <div class="card stat"><div class="k">Vendas Faturadas</div><div class="v">${BRL(vendasFaturadas)}</div></div>
+          <div class="card stat"><div class="k">Pedidos de Venda Pendentes</div><div class="v warn">${pendPV}</div></div>
+          <div class="card stat"><div class="k">Produtos com Estoque Baixo</div><div class="v ${estBaixo?'warn':'ok'}">${estBaixo}</div></div>
+        </div>
+      </div>`;
+    }
+
+    // ---- Cadastros (CRUD) -------------------------------------------------
+    function renderClientes(){
+      const rows = state.clientes.map(c=>`<tr><td>${c.codigo}</td><td>${c.razao}</td><td>${c.doc}</td><td>${c.cidade}/${c.uf}</td><td>${c.ativo?'Ativo':'Inativo'}</td></tr>`).join('');
+      main.innerHTML = `<div class="page"><h2>Clientes</h2>
+        <div class="toolbar">${allow('cad')?'<button onclick="formCliente()">+ Novo Cliente</button>':''}</div>
+        <div class="card"><table class="grid"><thead><tr><th>Código</th><th>Razão Social</th><th>Documento</th><th>Cidade/UF</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>
+      </div>`;
+    }
+    function formCliente(){
+      main.innerHTML = `<div class="page"><h2>Novo Cliente</h2>
+        <div class="card"><div class="form">
+          <div class="field"><label>Código</label><input id="c_cod" value="CLI${String(state.clientes.length+1).padStart(3,'0')}"/></div>
+          <div class="field"><label>Razão Social</label><input id="c_razao"/></div>
+          <div class="field"><label>CNPJ/CPF</label><input id="c_doc"/></div>
+          <div class="field"><label>Cidade</label><input id="c_cid"/></div>
+          <div class="field"><label>UF</label><input id="c_uf" maxlength="2"/></div>
+        </div>
+        <div class="right" style="margin-top:10px"><button onclick="nav('clientes')">Cancelar</button><button onclick="saveCliente()" style="background:var(--primary);color:#fff">Salvar</button></div></div>`;
+    }
+    function saveCliente(){
+      const cod = v('c_cod'), raz=v('c_razao'); if(!cod||!raz) return alert('Código e Razão são obrigatórios');
+      state.clientes.push({id:Date.now(),codigo:cod,razao:raz,doc:v('c_doc'),cidade:v('c_cid'),uf:v('c_uf').toUpperCase(),ativo:true});
+      log('CAD_CLIENTE',cod,raz); nav('clientes');
+    }
+
+    function renderFornecedores(){
+      const rows = state.fornecedores.map(f=>`<tr><td>${f.codigo}</td><td>${f.razao}</td><td>${f.doc}</td><td>${f.cidade}/${f.uf}</td><td>${f.ativo?'Ativo':'Inativo'}</td></tr>`).join('');
+      main.innerHTML = `<div class="page"><h2>Fornecedores</h2>
+        <div class="toolbar">${allow('cad')?'<button onclick="formForn()">+ Novo Fornecedor</button>':''}</div>
+        <div class="card"><table class="grid"><thead><tr><th>Código</th><th>Razão Social</th><th>Documento</th><th>Cidade/UF</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>
+      </div>`;
+    }
+    function formForn(){
+      main.innerHTML = `<div class="page"><h2>Novo Fornecedor</h2>
+        <div class="card"><div class="form">
+          <div class="field"><label>Código</label><input id="f_cod" value="FOR${String(state.fornecedores.length+1).padStart(3,'0')}"/></div>
+          <div class="field"><label>Razão Social</label><input id="f_razao"/></div>
+          <div class="field"><label>CNPJ/CPF</label><input id="f_doc"/></div>
+          <div class="field"><label>Cidade</label><input id="f_cid"/></div>
+          <div class="field"><label>UF</label><input id="f_uf" maxlength="2"/></div>
+        </div>
+        <div class="right" style="margin-top:10px"><button onclick="nav('fornecedores')">Cancelar</button><button onclick="saveForn()" style="background:var(--primary);color:#fff">Salvar</button></div></div>`;
+    }
+    function saveForn(){
+      const cod = v('f_cod'), raz=v('f_razao'); if(!cod||!raz) return alert('Código e Razão são obrigatórios');
+      state.fornecedores.push({id:Date.now(),codigo:cod,razao:raz,doc:v('f_doc'),cidade:v('f_cid'),uf:v('f_uf').toUpperCase(),ativo:true});
+      log('CAD_FORNECEDOR',cod,raz); nav('fornecedores');
+    }
+
+    function renderProdutos(){
+      const rows = state.produtos.map(p=>`<tr><td>${p.codigo}</td><td>${p.descricao}</td><td>${BRL(p.preco)}</td><td>${estoque(p.id)}</td><td>${p.estoqueMin}</td></tr>`).join('');
+      main.innerHTML = `<div class="page"><h2>Produtos</h2>
+        <div class="toolbar">${allow('cad')?'<button onclick="formProd()">+ Novo Produto</button>':''}</div>
+        <div class="card"><table class="grid"><thead><tr><th>Código</th><th>Descrição</th><th>Preço</th><th>Estoque</th><th>Estoque Mín.</th></tr></thead><tbody>${rows}</tbody></table></div>
+      </div>`;
+    }
+    function formProd(){
+      main.innerHTML = `<div class="page"><h2>Novo Produto</h2>
+        <div class="card"><div class="form">
+          <div class="field"><label>Código</label><input id="p_cod" value="PRD${String(state.produtos.length+1).padStart(3,'0')}"/></div>
+          <div class="field"><label>Descrição</label><input id="p_desc"/></div>
+          <div class="field"><label>Preço</label><input id="p_preco" type="number" step="0.01"/></div>
+          <div class="field"><label>Estoque Inicial</label><input id="p_q" type="number" step="1" value="0"/></div>
+          <div class="field"><label>Estoque Mín.</label><input id="p_min" type="number" step="1" value="1"/></div>
+        </div>
+        <div class="right" style="margin-top:10px"><button onclick="nav('produtos')">Cancelar</button><button onclick="saveProd()" style="background:var(--primary);color:#fff">Salvar</button></div></div>`;
+    }
+    function saveProd(){
+      const cod=v('p_cod'), desc=v('p_desc'); if(!cod||!desc) return alert('Código e Descrição são obrigatórios');
+      const id=Date.now(); const preco=parseFloat(v('p_preco')||0); const q=parseInt(v('p_q')||0); const min=parseInt(v('p_min')||1);
+      state.produtos.push({id,codigo:cod,descricao:desc,preco,estoqueMin:min});
+      state.estoque.push({prodId:id,q});
+      log('CAD_PRODUTO',cod,desc); nav('produtos');
+    }
+
+    // ---- Vendas -----------------------------------------------------------
+    function renderPV(){
+      const rows = state.pv.map(p=>{
+        const cli = byId(state.clientes,p.clienteId)?.razao||'—';
+        const base = tot(p.itens); const imposto = base*p.imposto; const total=base+imposto;
+        return `<tr>
+          <td>${p.numero}</td><td>${cli}</td><td>${BRL(base)}</td><td>${BRL(imposto)}</td><td>${BRL(total)}</td><td>${p.status}</td>
+          <td class="right">
+            <button onclick="formPV(${p.id})">Ver</button>
+            <button onclick="aprovarPV(${p.id})" ${!allow('aprovarPV')||p.status!=='EM_APROVACAO'?'disabled':''}>Aprovar</button>
+            <button onclick="faturarPV(${p.id})" ${!allow('faturarPV')||p.status!=='APROVADO'?'disabled':''}>Faturar</button>
+          </td></tr>`;
+      }).join('');
+      main.innerHTML = `<div class="page"><h2>Pedidos de Venda</h2>
+        <div class="toolbar"><button onclick="formPV()">+ Novo Pedido de Venda</button></div>
+        <div class="card">
+          <table class="grid"><thead><tr><th>Número</th><th>Cliente</th><th>Base</th><th>Imposto</th><th>Total</th><th>Status</th><th></th></tr></thead>
+          <tbody>${rows}</tbody></table>
+        </div></div>`;
+    }
+    function formPV(id){
+      const pv = id? byId(state.pv,id): null;
+      const itens = pv? pv.itens: [];
+      const selCli = state.clientes.map(c=>`<option value="${c.id}" ${pv&&pv.clienteId===c.id?'selected':''}>${c.codigo} — ${c.razao}</option>`).join('');
+      const linhas = (pv? pv.itens: [{prodId:state.produtos[0]?.id,q:1}]).map((it,i)=>rowItem('pv', i, it.prodId, it.q)).join('');
+      const base = tot(itens||[]); const imposto = base*(pv?pv.imposto:0.18); const total = base+imposto;
+      main.innerHTML = `<div class="page"><h2>${pv?'Pedido de Venda':'Novo Pedido de Venda'}</h2>
+        <div class="card">
+          <div class="form">
+            <div class="field"><label>Cliente</label><select id="pv_cli">${selCli}</select></div>
+            <div class="field"><label>Alíquota Imposto</label><input id="pv_imp" type="number" step="0.01" value="${pv?pv.imposto:0.18}"/></div>
+          </div>
+          <div class="items">
+            <div class="toolbar"><button onclick="addItem('pv')">+ Item</button></div>
+            <table class="grid"><thead><tr><th>Produto</th><th>Preço</th><th>Qtde</th><th>Subtotal</th><th></th></tr></thead><tbody id="pv_itens">${linhas}</tbody></table>
+          </div>
+          <div class="right" style="margin-top:10px"><div class="muted" id="pv_tot">Base ${BRL(base)} | Imposto ${BRL(imposto)} | Total ${BRL(total)}</div></div>
+          <div class="right" style="margin-top:10px"><button onclick="nav('pv')">Cancelar</button><button onclick="savePV(${pv?pv.id:'null'})" style="background:var(--primary);color:#fff">Salvar</button></div>
+        </div>
+      </div>`;
+      attachCalc('pv');
+    }
+    function savePV(id){
+      const clienteId = +v('pv_cli'); const imposto = parseFloat(v('pv_imp')||0);
+      const itens = collectItens('pv'); if(itens.length===0) return alert('Inclua ao menos 1 item');
+      if(id){
+        const p = byId(state.pv,id); if(!p) return; p.clienteId=clienteId; p.imposto=imposto; p.itens=itens;
+        log('PV_EDIT',p.numero,'Atualização'); nav('pv'); return;
+      }
+      const novoId = ++state.seqPV; const numero = 'PV'+new Date().getFullYear()+String(novoId).slice(-3);
+      state.pv.push({id:novoId,numero,clienteId,itens,imposto,status:'EM_APROVACAO'});
+      log('PV_NOVO',numero,'Criado em aprovação'); nav('pv');
+    }
+    function aprovarPV(id){
+      const p = byId(state.pv,id); if(!p||p.status!=='EM_APROVACAO') return;
+      if(!allow('aprovarPV')) return alert('Sem permissão');
+      p.status='APROVADO'; log('PV_APROVADO',p.numero,'Aprovação gestor/financeiro'); renderPV();
+    }
+    function faturarPV(id){
+      const p = byId(state.pv,id); if(!p||p.status!=='APROVADO') return;
+      if(!allow('faturarPV')) return alert('Sem permissão');
+      p.itens.forEach(it=>{ const e = state.estoque.find(x=>x.prodId===it.prodId); if(e) e.q = Math.max(0, e.q - it.q); });
+      const base = tot(p.itens); const valor = base + base*p.imposto;
+      state.cr.push({id:'CR'+p.id,pv:p.numero,valor, venc: vencimento(15), liquidado:false});
+      p.status='FATURADO'; log('PV_FATURADO',p.numero,'NF saída; CR gerado; estoque baixado'); renderPV();
+    }
+
+    // ---- Compras ----------------------------------------------------------
+    function renderPC(){
+      const rows = state.pc.map(p=>{
+        const forn = byId(state.fornecedores,p.fornId)?.razao||'—';
+        const base = tot(p.itens); const imposto=base*p.imposto; const total=base+imposto;
+        return `<tr>
+          <td>${p.numero}</td><td>${forn}</td><td>${BRL(base)}</td><td>${BRL(imposto)}</td><td>${BRL(total)}</td><td>${p.status}</td>
+          <td class="right">
+            <button onclick="formPC(${p.id})">Ver</button>
+            <button onclick="receberPC(${p.id})" ${!allow('receberPC')||p.status!=='EM_APROVACAO'?'disabled':''}>Receber</button>
+          </td>
+        </tr>`;
+      }).join('');
+      main.innerHTML = `<div class="page"><h2>Pedidos de Compra</h2>
+        <div class="toolbar"><button onclick="formPC()">+ Novo Pedido de Compra</button></div>
+        <div class="card">
+          <table class="grid"><thead><tr><th>Número</th><th>Fornecedor</th><th>Base</th><th>Imposto</th><th>Total</th><th>Status</th><th></th></tr></thead>
+          <tbody>${rows}</tbody></table>
+        </div></div>`;
+    }
+    function formPC(id){
+      const pc = id? byId(state.pc,id): null;
+      const itens = pc? pc.itens: [];
+      const selF = state.fornecedores.map(f=>`<option value="${f.id}" ${pc&&pc.fornId===f.id?'selected':''}>${f.codigo} — ${f.razao}</option>`).join('');
+      const linhas = (pc? pc.itens: [{prodId:state.produtos[0]?.id,q:1}]).map((it,i)=>rowItem('pc', i, it.prodId, it.q)).join('');
+      const base = tot(itens||[]); const imposto = base*(pc?pc.imposto:0.12); const total = base+imposto;
+      main.innerHTML = `<div class="page"><h2>${pc?'Pedido de Compra':'Novo Pedido de Compra'}</h2>
+        <div class="card">
+          <div class="form">
+            <div class="field"><label>Fornecedor</label><select id="pc_f">${selF}</select></div>
+            <div class="field"><label>Alíquota Imposto</label><input id="pc_imp" type="number" step="0.01" value="${pc?pc.imposto:0.12}"/></div>
+          </div>
+          <div class="items">
+            <div class="toolbar"><button onclick="addItem('pc')">+ Item</button></div>
+            <table class="grid"><thead><tr><th>Produto</th><th>Preço</th><th>Qtde</th><th>Subtotal</th><th></th></tr></thead><tbody id="pc_itens">${linhas}</tbody></table>
+          </div>
+          <div class="right" style="margin-top:10px"><div class="muted" id="pc_tot">Base ${BRL(base)} | Imposto ${BRL(imposto)} | Total ${BRL(total)}</div></div>
+          <div class="right" style="margin-top:10px"><button onclick="nav('pc')">Cancelar</button><button onclick="savePC(${pc?pc.id:'null'})" style="background:var(--primary);color:#fff">Salvar</button></div>
+        </div>
+      </div>`;
+      attachCalc('pc');
+    }
+    function savePC(id){
+      const fornId = +v('pc_f'); const imposto = parseFloat(v('pc_imp')||0);
+      const itens = collectItens('pc'); if(itens.length===0) return alert('Inclua ao menos 1 item');
+      if(id){
+        const p = byId(state.pc,id); if(!p) return; p.fornId=fornId; p.imposto=imposto; p.itens=itens;
+        log('PC_EDIT',p.numero,'Atualização'); nav('pc'); return;
+      }
+      const novoId = ++state.seqPC; const numero = 'PC'+new Date().getFullYear()+String(novoId).slice(-3);
+      state.pc.push({id:novoId,numero,fornId,itens,imposto,status:'EM_APROVACAO'});
+      log('PC_NOVO',numero,'Criado em aprovação'); nav('pc');
+    }
+    function receberPC(id){
+      const p = byId(state.pc,id); if(!p||p.status!=='EM_APROVACAO') return;
+      if(!allow('receberPC')) return alert('Sem permissão');
+      p.itens.forEach(it=>{ const e = state.estoque.find(x=>x.prodId===it.prodId); if(e) e.q += it.q; else state.estoque.push({prodId:it.prodId,q:it.q}); });
+      const base = tot(p.itens); const valor = base + base*p.imposto;
+      state.cp.push({id:'CP'+p.id,pc:p.numero,valor, venc: vencimento(20), liquidado:false});
+      p.status='RECEBIDO'; log('PC_RECEBIDO',p.numero,'NF entrada; CP gerado; estoque atualizado'); renderPC();
+    }
+
+    // ---- Financeiro -------------------------------------------------------
+    function renderFin(){
+      const rowsCR = state.cr.map(t=>`<tr><td>${t.id}</td><td>${t.pv}</td><td>${BRL(t.valor)}</td><td>${t.venc.split('T')[0]}</td><td>${t.liquidado?'<span class="badge b-liq">Liquidado</span>':'<span class="badge b-aberto">Aberto</span>'}</td><td><button onclick="liq('cr','${t.id}')" ${!allow('liquidar')||t.liquidado?'disabled':''}>Liquidar</button></td></tr>`).join('');
+      const rowsCP = state.cp.map(t=>`<tr><td>${t.id}</td><td>${t.pc}</td><td>${BRL(t.valor)}</td><td>${t.venc.split('T')[0]}</td><td>${t.liquidado?'<span class="badge b-liq">Liquidado</span>':'<span class="badge b-aberto">Aberto</span>'}</td><td><button onclick="liq('cp','${t.id}')" ${!allow('liquidar')||t.liquidado?'disabled':''}>Liquidar</button></td></tr>`).join('');
+      main.innerHTML = `<div class="page"><h2>Financeiro — CR / CP</h2>
+        <div class="p">
+          <div class="card"><h3>Contas a Receber</h3><table class="grid"><thead><tr><th>ID</th><th>PV</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Ação</th></tr></thead><tbody>${rowsCR||'<tr><td colspan="6">—</td></tr>'}</tbody></table></div>
+          <div class="card"><h3>Contas a Pagar</h3><table class="grid"><thead><tr><th>ID</th><th>PC</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Ação</th></tr></thead><tbody>${rowsCP||'<tr><td colspan="6">—</td></tr>'}</tbody></table></div>
+        </div></div>`;
+    }
+    function liq(kind,id){
+      if(!allow('liquidar')) return alert('Sem permissão');
+      const list = kind==='cr'?state.cr:state.cp;
+      const t = list.find(x=>x.id===id); if(!t||t.liquidado) return;
+      t.liquidado=true; log('TITULO_LIQUIDADO',id,kind.toUpperCase()); renderFin();
+    }
+
+    function renderAudit(){
+      const rows = state.audit.map(a=>`<tr><td>${a.ts.split('T')[0]}</td><td>${a.ev}</td><td>${a.ref}</td><td>${a.det}</td></tr>`).join('');
+      main.innerHTML = `<div class="page"><h2>Auditoria</h2>
+        <div class="card"><table class="grid"><thead><tr><th>Data</th><th>Evento</th><th>Ref</th><th>Detalhe</th></tr></thead><tbody>${rows||'<tr><td colspan="4">—</td></tr>'}</tbody></table></div>
+      </div>`;
+    }
+
+    // ---- Itens helpers ----------------------------------------------------
+    function rowItem(kind, idx, prodId, q){
+      const opts = state.produtos.map(p=>`<option value="${p.id}" ${p.id===prodId?'selected':''}>${p.codigo} — ${p.descricao}</option>`).join('');
+      const price = byId(state.produtos, prodId)?.preco || 0;
+      const sub = price * q;
+      return `<tr data-idx="${idx}">
+        <td><select class="${kind}_prod">${opts}</select></td>
+        <td class="${kind}_price">${BRL(price)}</td>
+        <td><input class="${kind}_q" type="number" value="${q}" min="1" style="width:90px"/></td>
+        <td class="${kind}_sub">${BRL(sub)}</td>
+        <td><button onclick="delItem('${kind}',${idx})">Remover</button></td>
+      </tr>`;
+    }
+    function addItem(kind){
+      const tbody = document.getElementById(kind+'_itens');
+      const idx = tbody.querySelectorAll('tr').length;
+      tbody.insertAdjacentHTML('beforeend', rowItem(kind, idx, state.produtos[0].id, 1));
+      attachCalc(kind);
+      calc(kind);
+    }
+    function delItem(kind, idx){
+      const tbody = document.getElementById(kind+'_itens');
+      const row = Array.from(tbody.querySelectorAll('tr'))[idx];
+      if(row){ row.remove(); renum(kind); calc(kind); }
+    }
+    function renum(kind){
+      const rows = document.getElementById(kind+'_itens').querySelectorAll('tr');
+      rows.forEach((r,i)=>r.setAttribute('data-idx', i));
+    }
+    function attachCalc(kind){
+      document.querySelectorAll('#'+kind+'_itens select, #'+kind+'_itens input').forEach(el=>{
+        el.onchange = ()=> calc(kind);
+      });
+      calc(kind);
+    }
+    function collectItens(kind){
+      const rows = document.querySelectorAll('#'+kind+'_itens tr');
+      const itens = [];
+      rows.forEach(r=>{
+        const prod = +r.querySelector('select').value;
+        const q = parseInt(r.querySelector('input').value||'1');
+        itens.push({prodId:prod, q});
+      });
+      return itens;
+    }
+    function calc(kind){
+      const rows = document.querySelectorAll('#'+kind+'_itens tr');
+      let base = 0;
+      rows.forEach(r=>{
+        const prodId = +r.querySelector('select').value;
+        const q = parseInt(r.querySelector('input').value||'1');
+        const price = byId(state.produtos,prodId)?.preco||0;
+        r.querySelector('.'+kind+'_price').textContent = BRL(price);
+        r.querySelector('.'+kind+'_sub').textContent = BRL(price*q);
+        base += price*q;
+      });
+      const imp = parseFloat(v(kind+'_imp')||0);
+      const totv = base + base*imp;
+      document.getElementById(kind+'_tot').textContent = `Base ${BRL(base)} | Imposto ${BRL(base*imp)} | Total ${BRL(totv)}`;
+    }
+
+    function vencimento(offset){
+      const d=new Date(); d.setDate(d.getDate()+offset);
+      if(d.getDay()==0) d.setDate(d.getDate()+1);
+      if(d.getDay()==6) d.setDate(d.getDate()+2);
+      d.setHours(0,0,0,0); return d.toISOString();
+    }
+    function v(id){ return document.getElementById(id).value; }
+
+    // boot
+    nav('dash');
+  </script>
+</body>
+</html>
