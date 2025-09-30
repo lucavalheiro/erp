@@ -1,24 +1,67 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>ERPNext</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ERP</title>
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      overflow: hidden;
-    }
-    iframe {
-      border: none;
-      width: 100%;
-      height: 100%;
-    }
+    html, body { height:100%; margin:0; background:#f5f5f5; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,Helvetica,sans-serif; }
+    #wrap { height:100%; }
+    iframe { width:100%; height:100%; border:0; display:block; }
+    #fallback { position:fixed; inset:0; display:grid; place-items:center; background:#f5f5f5; }
+    .card { background:#fff; padding:20px 24px; border:1px solid #e5e5e5; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,.06); text-align:center; }
+    .btn { display:inline-block; margin-top:10px; padding:10px 16px; border-radius:8px; border:1px solid #0a66c2; text-decoration:none; color:#fff; background:#0a66c2; }
   </style>
+  <script>
+    const ERP_URL = "https://erpxtd.c.erpnext.com/login?redirect-to=%2Fapp%2Fhome#login";
+
+    // Se o iframe não carregar (bloqueio X-Frame/CSP), faz redirect após 1500 ms.
+    let redirected = false;
+    const t = setTimeout(() => {
+      if (!redirected) {
+        redirected = true;
+        window.location.replace(ERP_URL);
+      }
+    }, 1500);
+
+    function iframeLoaded() {
+      // Carregou com sucesso -> mantém a URL do GitHub na barra.
+      if (!redirected) {
+        clearTimeout(t);
+        const fb = document.getElementById("fallback");
+        if (fb) fb.style.display = "none";
+      }
+    }
+    function iframeError() {
+      // Falha explícita -> redireciona imediatamente.
+      if (!redirected) {
+        redirected = true;
+        window.location.replace(ERP_URL);
+      }
+    }
+  </script>
 </head>
 <body>
-  <iframe src="https://erpxtd.c.erpnext.com/login?redirect-to=%2Fapp%2Fhome#login"></iframe>
+  <div id="fallback" aria-live="polite">
+    <div class="card">
+      <div>Carregando ERP…</div>
+      <a class="btn" href="https://erpxtd.c.erpnext.com/login?redirect-to=%2Fapp%2Fhome#login">Abrir agora</a>
+    </div>
+  </div>
+
+  <div id="wrap">
+    <iframe
+      src="https://erpxtd.c.erpnext.com/login?redirect-to=%2Fapp%2Fhome#login"
+      onload="iframeLoaded()"
+      onerror="iframeError()"
+      referrerpolicy="no-referrer"
+      sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox">
+    </iframe>
+  </div>
+
+  <noscript>
+    <meta http-equiv="refresh" content="0; url=https://erpxtd.c.erpnext.com/login?redirect-to=%2Fapp%2Fhome#login">
+    <p>JavaScript desativado. <a href="https://erpxtd.c.erpnext.com/login?redirect-to=%2Fapp%2Fhome#login">Abrir ERP</a></p>
+  </noscript>
 </body>
 </html>
-
