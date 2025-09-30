@@ -2,35 +2,40 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <title>POC — Criar Cliente ERPNext</title>
+  <title>POC — Criar 10 Clientes Aleatórios</title>
   <style>
     body { font-family: Arial; margin: 20px; }
-    label { display: block; margin-top: 8px; }
-    input { width: 300px; padding: 6px; }
-    button { margin-top: 12px; padding: 8px 12px; }
-    pre { background: #f6f6f6; padding: 12px; border: 1px solid #ddd; }
+    button { padding: 10px 20px; margin-bottom: 20px; }
+    pre { background: #f6f6f6; padding: 12px; border: 1px solid #ddd; max-height: 400px; overflow: auto; }
     .error { color: red; }
   </style>
 </head>
 <body>
-  <h2>Criar Cliente — POC</h2>
-  <form id="formCliente">
-    <label>Nome do Cliente: <input name="customer_name" required /></label>
-    <label>Tipo (Company / Individual): <input name="customer_type" value="Company" required /></label>
-    <label>Grupo do Cliente: <input name="customer_group" value="Commercial" required /></label>
-    <label>Território: <input name="territory" value="All Territories" required /></label>
-    <button type="submit">Criar</button>
-  </form>
-
-  <h3>Resposta / Erro</h3>
-  <pre id="resultado">Aguardando ação...</pre>
+  <h2>Criar 10 Clientes Aleatórios</h2>
+  <button id="btnCriar">Criar 10 Clientes</button>
+  <h3>Resultados</h3>
+  <pre id="resultado">Nenhuma ação ainda.</pre>
 
   <script>
-    // --- TOKEN já embutido aqui (use com cautela) ---
     const ERP_BASE_URL = "https://erpxtd.c.erpnext.com";
     const API_KEY = "04e12289fc6d5b9";
     const API_SECRET = "793a503f69dbc4c";
-    // ------------------------------------------------
+
+    function randName() {
+      const nomes = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta", "Iota", "Kappa"];
+      const sobrenomes = ["Corp", "Tech", "Solutions", "Systems", "Industries", "Enterprises"];
+      const n = nomes[Math.floor(Math.random() * nomes.length)];
+      const s = sobrenomes[Math.floor(Math.random() * sobrenomes.length)];
+      return `${n} ${s} ${Math.floor(Math.random()*1000)}`;
+    }
+
+    function randGroup() {
+      // usar grupo que sabemos que existe
+      return "Commercial";
+    }
+    function randTerritory() {
+      return "All Territories";
+    }
 
     async function criarCliente(payload) {
       const url = `${ERP_BASE_URL}/api/resource/Customer`;
@@ -38,47 +43,35 @@
         "Authorization": `token ${API_KEY}:${API_SECRET}`,
         "Content-Type": "application/json"
       };
-      const response = await fetch(url, {
+      const resp = await fetch(url, {
         method: "POST",
         headers: headers,
         body: JSON.stringify(payload)
       });
-
-      const text = await response.text();
+      const text = await resp.text();
       let body;
-      try {
-        body = JSON.parse(text);
-      } catch (e) {
-        body = text;
-      }
-
-      return {
-        status: response.status,
-        ok: response.ok,
-        body: body
-      };
+      try { body = JSON.parse(text); }
+      catch(e) { body = text; }
+      return { status: resp.status, ok: resp.ok, body: body };
     }
 
-    document.getElementById("formCliente").addEventListener("submit", async (ev) => {
-      ev.preventDefault();
-      const f = ev.target;
-      const payload = {
-        customer_name: f.customer_name.value,
-        customer_type: f.customer_type.value,
-        customer_group: f.customer_group.value,
-        territory: f.territory.value
-      };
-      document.getElementById("resultado").textContent = "Enviando...";
-      try {
-        const result = await criarCliente(payload);
-        if (result.ok) {
-          document.getElementById("resultado").textContent = `Sucesso (status ${result.status}):\n` + JSON.stringify(result.body, null, 2);
-        } else {
-          document.getElementById("resultado").innerHTML = `<span class="error">Erro (status ${result.status}):</span>\n` + JSON.stringify(result.body, null, 2);
+    document.getElementById("btnCriar").addEventListener("click", async () => {
+      const results = [];
+      for (let i = 1; i <= 10; i++) {
+        const payload = {
+          customer_name: randName(),
+          customer_type: "Company",
+          customer_group: randGroup(),
+          territory: randTerritory()
+        };
+        try {
+          const res = await criarCliente(payload);
+          results.push({ i, payload, res });
+        } catch (err) {
+          results.push({ i, payload, error: err.toString() });
         }
-      } catch (err) {
-        document.getElementById("resultado").innerHTML = `<span class="error">Erro de rede:</span> ${err}`;
       }
+      document.getElementById("resultado").textContent = JSON.stringify(results, null, 2);
     });
   </script>
 </body>
