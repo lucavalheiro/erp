@@ -1,67 +1,85 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ERP</title>
+  <meta charset="utf-8" />
+  <title>POC — Criar Cliente ERPNext</title>
   <style>
-    html, body { height:100%; margin:0; background:#f5f5f5; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,Helvetica,sans-serif; }
-    #wrap { height:100%; }
-    iframe { width:100%; height:100%; border:0; display:block; }
-    #fallback { position:fixed; inset:0; display:grid; place-items:center; background:#f5f5f5; }
-    .card { background:#fff; padding:20px 24px; border:1px solid #e5e5e5; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,.06); text-align:center; }
-    .btn { display:inline-block; margin-top:10px; padding:10px 16px; border-radius:8px; border:1px solid #0a66c2; text-decoration:none; color:#fff; background:#0a66c2; }
+    body { font-family: Arial; margin: 20px; }
+    label { display: block; margin-top: 8px; }
+    input { width: 300px; padding: 6px; }
+    button { margin-top: 12px; padding: 8px 12px; }
+    pre { background: #f6f6f6; padding: 12px; border: 1px solid #ddd; }
+    .error { color: red; }
   </style>
-  <script>
-    const ERP_URL = "https://erpxtd.c.erpnext.com/login?redirect-to=%2Fapp%2Fhome#login";
-
-    // Se o iframe não carregar (bloqueio X-Frame/CSP), faz redirect após 1500 ms.
-    let redirected = false;
-    const t = setTimeout(() => {
-      if (!redirected) {
-        redirected = true;
-        window.location.replace(ERP_URL);
-      }
-    }, 1500);
-
-    function iframeLoaded() {
-      // Carregou com sucesso -> mantém a URL do GitHub na barra.
-      if (!redirected) {
-        clearTimeout(t);
-        const fb = document.getElementById("fallback");
-        if (fb) fb.style.display = "none";
-      }
-    }
-    function iframeError() {
-      // Falha explícita -> redireciona imediatamente.
-      if (!redirected) {
-        redirected = true;
-        window.location.replace(ERP_URL);
-      }
-    }
-  </script>
 </head>
 <body>
-  <div id="fallback" aria-live="polite">
-    <div class="card">
-      <div>Carregando ERP…</div>
-      <a class="btn" href="https://erpxtd.c.erpnext.com/login?redirect-to=%2Fapp%2Fhome#login">Abrir agora</a>
-    </div>
-  </div>
+  <h2>Criar Cliente — POC</h2>
+  <form id="formCliente">
+    <label>Nome do Cliente: <input name="customer_name" required /></label>
+    <label>Tipo (Company / Individual): <input name="customer_type" value="Company" required /></label>
+    <label>Grupo do Cliente: <input name="customer_group" value="Commercial" required /></label>
+    <label>Território: <input name="territory" value="All Territories" required /></label>
+    <button type="submit">Criar</button>
+  </form>
 
-  <div id="wrap">
-    <iframe
-      src="https://erpxtd.c.erpnext.com/login?redirect-to=%2Fapp%2Fhome#login"
-      onload="iframeLoaded()"
-      onerror="iframeError()"
-      referrerpolicy="no-referrer"
-      sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox">
-    </iframe>
-  </div>
+  <h3>Resposta / Erro</h3>
+  <pre id="resultado">Aguardando ação...</pre>
 
-  <noscript>
-    <meta http-equiv="refresh" content="0; url=https://erpxtd.c.erpnext.com/login?redirect-to=%2Fapp%2Fhome#login">
-    <p>JavaScript desativado. <a href="https://erpxtd.c.erpnext.com/login?redirect-to=%2Fapp%2Fhome#login">Abrir ERP</a></p>
-  </noscript>
+  <script>
+    // --- INSIRA SUAS CREDENCIAIS LOCALMENTE ---
+    const ERP_BASE_URL = "https://erpxtd.c.erpnext.com";
+    const API_KEY = "04e12289fc6d5b9";
+    const API_SECRET = "793a503f69dbc4c";
+    // --------------------------------------------
+
+    async function criarCliente(payload) {
+      const url = `${ERP_BASE_URL}/api/resource/Customer`;
+      const headers = {
+        "Authorization": `token ${API_KEY}:${API_SECRET}`,
+        "Content-Type": "application/json"
+      };
+      const response = await fetch(url, {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify(payload)
+      });
+
+      const text = await response.text();
+      let body;
+      try {
+        body = JSON.parse(text);
+      } catch (e) {
+        body = text;
+      }
+
+      return {
+        status: response.status,
+        ok: response.ok,
+        body: body
+      };
+    }
+
+    document.getElementById("formCliente").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const f = ev.target;
+      const payload = {
+        customer_name: f.customer_name.value,
+        customer_type: f.customer_type.value,
+        customer_group: f.customer_group.value,
+        territory: f.territory.value
+      };
+      document.getElementById("resultado").textContent = "Enviando...";
+      try {
+        const result = await criarCliente(payload);
+        if (result.ok) {
+          document.getElementById("resultado").textContent = `Sucesso (status ${result.status}):\n` + JSON.stringify(result.body, null, 2);
+        } else {
+          document.getElementById("resultado").innerHTML = `<span class="error">Erro (status ${result.status}):</span>\n` + JSON.stringify(result.body, null, 2);
+        }
+      } catch (err) {
+        document.getElementById("resultado").innerHTML = `<span class="error">Erro de rede:</span> ${err}`;
+      }
+    });
+  </script>
 </body>
 </html>
